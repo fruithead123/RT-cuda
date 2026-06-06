@@ -7,12 +7,14 @@ extern "C" void launch_kernel(uchar4* d_out, int width, int height, float time);
 
 class Engine{
 public:
-    Engine() {};
+    Engine();
+    ~Engine();
     int run();
 
 private:
     void initGraphics();
     void runSim();
+    void cleanup();
 
 private:
     // Texture and frame buffer for rendering
