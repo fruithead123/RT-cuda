@@ -1,18 +1,6 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <cuda_runtime.h>
-#include <iostream>
+#include <pathtracer/Engine.h>
 
-const int WIDTH = 1024;
-const int HEIGHT = 512;
-
-GLuint texture;             
-uchar4* dev_render_buffer;  
-GLuint fbo; // Read Framebuffer for easy blitting
-
-extern "C" void launch_kernel(uchar4* d_out, int width, int height, float time);
-
-void initGraphics() {
+void Engine::initGraphics(){
     // 1. Allocate CUDA Unified Memory
     cudaMallocManaged(&dev_render_buffer, WIDTH * HEIGHT * sizeof(uchar4));
 
@@ -31,7 +19,7 @@ void initGraphics() {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 }
 
-void runSimulation() {
+void Engine::runSim(){
     float time = glfwGetTime();
 
     // Run your path tracer kernel
@@ -44,8 +32,11 @@ void runSimulation() {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-int main() {
-    if (!glfwInit()) return -1;
+int Engine::run(){
+    if (!glfwInit()){
+        std::cout << "GLFW Init failed!" << std::endl;
+        return -1;
+    }
 
     // We use a COMPATIBILITY profile here because it allows direct blitting 
     // to the backbuffer without writing complex custom vertex and fragment shaders.
@@ -53,8 +44,9 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "CUDA Path Tracer Pipeline", NULL, NULL);
+    window = glfwCreateWindow(WIDTH, HEIGHT, "CUDA Path Tracer Pipeline", NULL, NULL);
     if (!window) {
+        std::cout << "Could not create window!" << std::endl;
         glfwTerminate();
         return -1;
     }
@@ -65,8 +57,7 @@ int main() {
     initGraphics();
 
     while (!glfwWindowShouldClose(window)) {
-        // Compute the next frame on your RTX 5080
-        runSimulation();
+        runSim();
 
         // Clear the screen
         glClear(GL_COLOR_BUFFER_BIT);
@@ -78,8 +69,8 @@ int main() {
 
         // Copy the texture directly to the screen pixels instantly via hardware blitting
         glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 
-                          0, 0, WIDTH, HEIGHT, 
-                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                        0, 0, WIDTH, HEIGHT, 
+                        GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
         // -------------------------------
