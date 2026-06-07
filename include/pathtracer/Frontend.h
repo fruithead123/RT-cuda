@@ -5,6 +5,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <string>
+#include <filesystem>
 
 class Frontend{
 public:
@@ -41,7 +42,7 @@ private:
     int w, h;
     int currentFrame = 0;
     int maxFrames = 0;
-    std::string path;
+    std::filesystem::path output_root = "./output";
 };
 
 #endif

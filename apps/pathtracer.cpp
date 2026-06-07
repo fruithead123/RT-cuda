@@ -5,10 +5,14 @@
 int main(){
     // Scene scene = ...
 
-    WindowFrontend frontend;
-    std::unique_ptr<WindowFrontend> p_frontend = std::make_unique<WindowFrontend>(frontend);
+    // Window
+    std::unique_ptr<WindowFrontend> w_frontend = std::make_unique<WindowFrontend>();
 
-    Engine engine(std::move(p_frontend));
+    // Headless
+    std::unique_ptr<ImageFrontend> h_frontend = std::make_unique<ImageFrontend>();
+    h_frontend->setMaxFrames(1);
+
+    Engine engine(std::move(h_frontend));
     engine.run();
 
 }

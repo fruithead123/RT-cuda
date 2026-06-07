@@ -1,4 +1,5 @@
 #include <pathtracer/Engine.h>
+#include <iostream>
 
 void Engine::init(){
     cudaMallocManaged(&dev_render_buffer, WIDTH * HEIGHT * sizeof(uchar4));

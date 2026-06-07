@@ -1,5 +1,7 @@
 #include <pathtracer/Frontend.h>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 /* Window Frontend Implementation*/
 
@@ -75,11 +77,46 @@ WindowFrontend::~WindowFrontend() {
 bool ImageFrontend::init(int width, int height){
     w = width;
     h = height;
+
+    if (!std::filesystem::exists(output_root)) {
+        std::filesystem::create_directories(output_root);
+        std::cout << "Created output directory: " << std::filesystem::absolute(output_root) << std::endl;
+    }
+
     return true;
 }
 
 void ImageFrontend::render(const uchar4* dev_render_buffer){
-    // TODO: Add setter for file path, have os create parent folders if they don't exist and save the pic
+    // Construct a unique filename for this frame
+    std::string filename = "render" + std::to_string(currentFrame++) + ".ppm";
+    std::filesystem::path fullPath = output_root / filename;
+    std::cout << "Saving to " << filename << std::endl;
+    
+    // Open file in binary mode
+    std::ofstream file(fullPath, std::ios::out | std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        return;
+    }
+
+    // 1. Write the PPM Header
+    // P6 means binary RGB, followed by width, height, and max color value (255)
+    file << "P6\n" << w << " " << h << "\n255\n";
+
+    // 2. Write the Pixel Data
+    // Your buffer is uchar4 (RGBA), but PPM expects strict 24-bit RGB (3 bytes per pixel).
+    // We loop through the managed buffer and drop the Alpha channel on the fly.
+    for (int i = 0; i < w * h; ++i) {
+        uchar4 pixel = dev_render_buffer[i];
+        
+        // Write Red, Green, and Blue bytes sequentially
+        file.put(pixel.x); // R
+        file.put(pixel.y); // G
+        file.put(pixel.z); // B
+    }
+
+    file.close();
+    std::cout << "Successfully saved snapshot to: " << fullPath << std::endl;
 }
 
 bool ImageFrontend::shouldClose() {
@@ -87,5 +124,5 @@ bool ImageFrontend::shouldClose() {
 }
 
 void ImageFrontend::setMaxFrames(int maxFrames){
-    maxFrames = maxFrames;
+    this->maxFrames = maxFrames;
 }
