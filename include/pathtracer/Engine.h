@@ -1,29 +1,27 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <cuda_runtime.h>
-#include <iostream>
+#ifndef ENGINE_H
+#define ENGINE_H
+
+#include <pathtracer/Frontend.h>
+#include <memory>
 
 extern "C" void launch_kernel(uchar4* d_out, int width, int height, float time);
 
-class Engine{
-public:
-    Engine();
-    ~Engine();
-    int run();
-
+class Engine {
 private:
-    void initGraphics();
-    void runSim();
-    void cleanup();
-
-private:
-    // Texture and frame buffer for rendering
-    GLuint texture;
+    std::unique_ptr<Frontend> output;
     uchar4* dev_render_buffer;
-    GLuint fbo;
+    int WIDTH = 1280;
+    int HEIGHT = 720;
 
-    // Window
-    const int WIDTH{1024};
-    const int HEIGHT{512};
-    GLFWwindow* window = nullptr;
+    void init();
+
+public:
+    Engine(std::unique_ptr<Frontend> display) : output(std::move(display)) {}
+    ~Engine(){
+        cudaFree(dev_render_buffer);
+    }
+    
+    void run();
 };
+
+#endif

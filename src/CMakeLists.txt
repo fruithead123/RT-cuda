@@ -10,7 +10,8 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLFW REQUIRED glfw3)
 
 # 3. Create the library target
-add_library(pt_core STATIC ${CORE_SOURCES})
+add_library(pt_core STATIC ${CORE_SOURCES}
+    Frontend.C)
 
 # 4. Include paths (Both your internal headers and GLFW)
 target_include_directories(pt_core PUBLIC 
