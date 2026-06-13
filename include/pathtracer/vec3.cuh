@@ -4,24 +4,33 @@
 #include <math.h>
 #include <stdlib.h>
 #include <iostream>
+#include <cuda_runtime.h>
 
-class Vec3  {
-
-
+class Vec3 : public float4 {
 public:
-    __host__ __device__ Vec3() {}
-    __host__ __device__ Vec3(float e0, float e1, float e2) { e[0] = e0; e[1] = e1; e[2] = e2; }
-    __host__ __device__ inline float x() const { return e[0]; }
-    __host__ __device__ inline float y() const { return e[1]; }
-    __host__ __device__ inline float z() const { return e[2]; }
-    __host__ __device__ inline float r() const { return e[0]; }
-    __host__ __device__ inline float g() const { return e[1]; }
-    __host__ __device__ inline float b() const { return e[2]; }
+    __host__ __device__ Vec3() { x = 0.0f; y = 0.0f; z = 0.0f; w = 0.0f; }
+    
+    __host__ __device__ Vec3(float e0, float e1, float e2) { 
+        x = e0; y = e1; z = e2; w = 0.0f; 
+    }
+    
+    __host__ __device__ inline float x_val() const { return x; }
+    __host__ __device__ inline float y_val() const { return y; }
+    __host__ __device__ inline float z_val() const { return z; }
+    __host__ __device__ inline float r() const { return x; }
+    __host__ __device__ inline float g() const { return y; }
+    __host__ __device__ inline float b() const { return z; }
 
     __host__ __device__ inline const Vec3& operator+() const { return *this; }
-    __host__ __device__ inline Vec3 operator-() const { return Vec3(-e[0], -e[1], -e[2]); }
-    __host__ __device__ inline float operator[](int i) const { return e[i]; }
-    __host__ __device__ inline float& operator[](int i) { return e[i]; };
+    __host__ __device__ inline Vec3 operator-() const { return Vec3(-x, -y, -z); }
+    
+    // Subscript access mapped straight to the float4 properties
+    __host__ __device__ inline float operator[](int i) const { 
+        return (i == 0) ? x : (i == 1) ? y : z; 
+    }
+    __host__ __device__ inline float& operator[](int i) { 
+        return (i == 0) ? x : (i == 1) ? y : z; 
+    }
 
     __host__ __device__ inline Vec3& operator+=(const Vec3 &v2);
     __host__ __device__ inline Vec3& operator-=(const Vec3 &v2);
@@ -30,111 +39,108 @@ public:
     __host__ __device__ inline Vec3& operator*=(const float t);
     __host__ __device__ inline Vec3& operator/=(const float t);
 
-    __host__ __device__ inline float length() const { return sqrt(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]); }
-    __host__ __device__ inline float squared_length() const { return e[0]*e[0] + e[1]*e[1] + e[2]*e[2]; }
-    __host__ __device__ inline void make_unit_vector();
+    // Fixed math calls to use precise __builtin math or fast intrinsics on device
+    __host__ __device__ inline float length() const { return sqrtf(x*x + y*y + z*z); }
+    __host__ __device__ inline float squared_length() const { return x*x + y*y + z*z; }
+    
+    __host__ __device__ inline Vec3 dot(const Vec3 v) const {
+        return Vec3(x * v.x, y * v.y, z * v.z);
+    }
 
+    __host__ __device__ inline Vec3 cross(const Vec3 v2) const {
+        return Vec3((y * v2.z - z * v2.y),
+                    (-(x * v2.z - z * v2.x)),
+                    (x * v2.y - y * v2.x));
+    }
 
-    float e[3];
+    __host__ __device__ inline Vec3 make_unit_vector() {
+        float k = 1.0f / sqrtf(x*x + y*y + z*z);
+        return Vec3(x * k, y * k, z * k);
+    }
+
+    __host__ __device__ inline void normalize() {
+        float k = 1.0f / sqrtf(x*x + y*y + z*z);
+        x *= k; y *= k; z *= k;
+    }
 };
 
-
-
+// Stream operators updated to map straight to member fields
 inline std::istream& operator>>(std::istream &is, Vec3 &t) {
-    is >> t.e[0] >> t.e[1] >> t.e[2];
+    is >> t.x >> t.y >> t.z;
     return is;
 }
 
 inline std::ostream& operator<<(std::ostream &os, const Vec3 &t) {
-    os << t.e[0] << " " << t.e[1] << " " << t.e[2];
+    os << t.x << " " << t.y << " " << t.z;
     return os;
 }
 
-__host__ __device__ inline void Vec3::make_unit_vector() {
-    float k = 1.0 / sqrt(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
-    e[0] *= k; e[1] *= k; e[2] *= k;
-}
-
 __host__ __device__ inline Vec3 operator+(const Vec3 &v1, const Vec3 &v2) {
-    return Vec3(v1.e[0] + v2.e[0], v1.e[1] + v2.e[1], v1.e[2] + v2.e[2]);
+    return Vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
 }
 
 __host__ __device__ inline Vec3 operator-(const Vec3 &v1, const Vec3 &v2) {
-    return Vec3(v1.e[0] - v2.e[0], v1.e[1] - v2.e[1], v1.e[2] - v2.e[2]);
+    return Vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
 }
 
 __host__ __device__ inline Vec3 operator*(const Vec3 &v1, const Vec3 &v2) {
-    return Vec3(v1.e[0] * v2.e[0], v1.e[1] * v2.e[1], v1.e[2] * v2.e[2]);
+    return Vec3(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z);
 }
 
 __host__ __device__ inline Vec3 operator/(const Vec3 &v1, const Vec3 &v2) {
-    return Vec3(v1.e[0] / v2.e[0], v1.e[1] / v2.e[1], v1.e[2] / v2.e[2]);
+    return Vec3(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z);
 }
 
 __host__ __device__ inline Vec3 operator*(float t, const Vec3 &v) {
-    return Vec3(t*v.e[0], t*v.e[1], t*v.e[2]);
+    return Vec3(t * v.x, t * v.y, t * v.z);
 }
 
 __host__ __device__ inline Vec3 operator/(Vec3 v, float t) {
-    return Vec3(v.e[0]/t, v.e[1]/t, v.e[2]/t);
+    return Vec3(v.x / t, v.y / t, v.z / t);
 }
 
 __host__ __device__ inline Vec3 operator*(const Vec3 &v, float t) {
-    return Vec3(t*v.e[0], t*v.e[1], t*v.e[2]);
+    return Vec3(t * v.x, t * v.y, t * v.z);
 }
 
 __host__ __device__ inline float dot(const Vec3 &v1, const Vec3 &v2) {
-    return v1.e[0] *v2.e[0] + v1.e[1] *v2.e[1]  + v1.e[2] *v2.e[2];
+    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }
 
 __host__ __device__ inline Vec3 cross(const Vec3 &v1, const Vec3 &v2) {
-    return Vec3( (v1.e[1]*v2.e[2] - v1.e[2]*v2.e[1]),
-                (-(v1.e[0]*v2.e[2] - v1.e[2]*v2.e[0])),
-                (v1.e[0]*v2.e[1] - v1.e[1]*v2.e[0]));
+    return Vec3((v1.y * v2.z - v1.z * v2.y),
+                (-(v1.x * v2.z - v1.z * v2.x)),
+                (v1.x * v2.y - v1.y * v2.x));
 }
 
-
 __host__ __device__ inline Vec3& Vec3::operator+=(const Vec3 &v){
-    e[0]  += v.e[0];
-    e[1]  += v.e[1];
-    e[2]  += v.e[2];
+    x += v.x; y += v.y; z += v.z;
     return *this;
 }
 
 __host__ __device__ inline Vec3& Vec3::operator*=(const Vec3 &v){
-    e[0]  *= v.e[0];
-    e[1]  *= v.e[1];
-    e[2]  *= v.e[2];
+    x *= v.x; y *= v.y; z *= v.z;
     return *this;
 }
 
 __host__ __device__ inline Vec3& Vec3::operator/=(const Vec3 &v){
-    e[0]  /= v.e[0];
-    e[1]  /= v.e[1];
-    e[2]  /= v.e[2];
+    x /= v.x; y /= v.y; z /= v.z;
     return *this;
 }
 
 __host__ __device__ inline Vec3& Vec3::operator-=(const Vec3& v) {
-    e[0]  -= v.e[0];
-    e[1]  -= v.e[1];
-    e[2]  -= v.e[2];
+    x -= v.x; y -= v.y; z -= v.z;
     return *this;
 }
 
 __host__ __device__ inline Vec3& Vec3::operator*=(const float t) {
-    e[0]  *= t;
-    e[1]  *= t;
-    e[2]  *= t;
+    x *= t; y *= t; z *= t;
     return *this;
 }
 
 __host__ __device__ inline Vec3& Vec3::operator/=(const float t) {
-    float k = 1.0/t;
-
-    e[0]  *= k;
-    e[1]  *= k;
-    e[2]  *= k;
+    float k = 1.0f / t;
+    x *= k; y *= k; z *= k;
     return *this;
 }
 

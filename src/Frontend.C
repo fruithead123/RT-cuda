@@ -42,7 +42,23 @@ bool WindowFrontend::init(int width, int height) {
     return true;
 }
 
-void WindowFrontend::render(const uchar4* dev_render_buffer) {
+void WindowFrontend::render(const uchar4* dev_render_buffer, float renderTime) {
+    double curTime = glfwGetTime();
+    frameCount++;
+
+    if (curTime - lastFPSUpdateTime > 0.5){
+        float currentFPS = static_cast<float>(frameCount) / static_cast<float>(curTime - lastFPSUpdateTime);
+
+        std::string titleStr = "Path Tracer | Window FPS: " + std::to_string(static_cast<int>(currentFPS)) +
+                               " | GPU Kernel: " + std::to_string(static_cast<int>(renderTime)) + 
+                               "." + std::to_string(static_cast<int>(renderTime * 100) % 100) + " ms";
+        
+        glfwSetWindowTitle(window, titleStr.c_str());
+        
+        frameCount = 0;
+        lastFPSUpdateTime = curTime;
+
+    }
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Upload the CUDA buffer to the texture
@@ -56,6 +72,8 @@ void WindowFrontend::render(const uchar4* dev_render_buffer) {
         glTexCoord2f(1.0f, 1.0f); glVertex2f( 1.0f,  1.0f);
         glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0f,  1.0f);
     glEnd();
+
+    glFinish();
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -86,7 +104,9 @@ bool ImageFrontend::init(int width, int height){
     return true;
 }
 
-void ImageFrontend::render(const uchar4* dev_render_buffer){
+void ImageFrontend::render(const uchar4* dev_render_buffer, float renderTime){
+    std::cout << "Rendered in " << renderTime << "ms" << std::endl;
+
     // Construct a unique filename for this frame
     std::string filename = "render" + std::to_string(currentFrame++) + ".ppm";
     std::filesystem::path fullPath = output_root / filename;

@@ -12,7 +12,7 @@ public:
     virtual ~Frontend() = default;
 
     virtual bool init(int width, int height) = 0;
-    virtual void render(const uchar4* dev_render_buffer) = 0;
+    virtual void render(const uchar4* dev_render_buffer, float renderTime = 0) = 0;
     virtual bool shouldClose() = 0;
 
 };
@@ -22,19 +22,24 @@ class WindowFrontend : public Frontend {
 public:
     ~WindowFrontend();
     bool init(int width, int height);
-    void render(const uchar4* dev_render_buffer);
+    void render(const uchar4* dev_render_buffer, float renderTime = 0);
     bool shouldClose();
 
 private:
     GLFWwindow* window = nullptr;
     GLuint texture = 0;
     int w, h;
+
+    // FPS Counters
+    double lastFPSUpdateTime = 0.0;
+    int frameCount = 0;
+    
 };
 
 class ImageFrontend : public Frontend {
 public:
     bool init(int width, int height);
-    void render(const uchar4* dev_render_buffer);
+    void render(const uchar4* dev_render_buffer, float renderTime = 0);
     bool shouldClose();
     void setMaxFrames(int maxFrames);
 
